@@ -2,5 +2,7 @@ package br.com.trevo.database.model;
 
 public enum TipoArquivo {
         FOTO,
-        VIDEO
+        VIDEO,
+        FOTO_PERFIL,
+        FOTO_CAPA
 }

@@ -3,6 +3,9 @@ package br.com.trevo.database.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Table(name = "album")
 @NoArgsConstructor
@@ -17,7 +20,16 @@ public class AlbumEntity {
     private Integer id;
     private String nome;
     private String descricao;
-    @Lob
-    @Column(name = "foto_da_capa")
-    private byte[] fotoDaCapa;
+
+    @ManyToOne
+    @JoinColumn(name = "foto_capa_id", nullable = false)
+    private ArquivoEntity fotoDaCapa;
+
+    @ManyToOne
+    @JoinColumn(name = "usuario_id", nullable = false)
+    private UsuarioEntity usuario;
+
+    @OneToMany(mappedBy = "album", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<SubAlbumEntity> subAlbums = new ArrayList<>();
 }
