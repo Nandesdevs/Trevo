@@ -22,7 +22,14 @@ spring:
       max-file-size: 50MB
       max-request-size: 50MB
 
+server:
+  servlet:
+    context-path: /api/v1
+
 app:
   trevo:
     uploads:
       dir: uploads
+  jwt:
+    secret: "minha-chave-super-secreta-com-pelo-menos-32-caracteres-trevo"
+    expiration-ms: 86400000

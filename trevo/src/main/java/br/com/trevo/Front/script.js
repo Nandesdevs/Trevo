@@ -1,7 +1,7 @@
 /** Trevo SPA — código organizado e preparado para API REST. */
 
 const CONFIG = {
-  apiMode: "mock", // Mude para "api" ao conectar o servidor.
+  apiMode: "api", // Mude para "api" ao conectar o servidor.
   apiBaseUrl: window.TREVO_API_URL || "http://localhost:3000/api/v1",
   storagePrefix: "trevo-",
 };
@@ -123,7 +123,7 @@ function showFormError(message) {
 
 // Auth pages ------------------------------------------------------------------
 function login() {
-  authLayout("Bem-vindo ao Trevo", '<label class="field">E-mail, telefone ou usuário<input required name="login" placeholder="Digite seu acesso"></label><label class="field">Senha<input required name="password" type="password" placeholder="Digite sua senha"></label><a href="#/forgot">Esqueceu a senha?</a>', "Entrar", 'Não possui conta? <a href="#/signup">Cadastre-se gratuitamente</a>', '<img class="login-logo" src="assets/logo-login-transparente.png" alt="Logo do Trevo">');
+  authLayout("Bem-vindo ao Trevo", '<label class="field">E-mail<input required name="login" type="email" placeholder="Digite seu e-mail"></label><label class="field">Senha<input required name="password" type="password" placeholder="Digite sua senha"></label><a href="#/forgot">Esqueceu a senha?</a>', "Entrar", 'Não possui conta? <a href="#/signup">Cadastre-se gratuitamente</a>', '<img class="login-logo" src="assets/logo-login-transparente.png" alt="Logo do Trevo">');
   document.querySelector("#auth-form").onsubmit = async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -152,13 +152,52 @@ function signup() {
 }
 
 function forgot() {
-  authLayout("Recuperar senha", '<label class="field">E-mail ou telefone<input required name="contact" placeholder="voce@email.com ou (00) 00000-0000"></label><p>Enviaremos um código para confirmar sua identidade.</p>', "Enviar código", '<a href="#/login">Voltar ao login</a>');
-  document.querySelector("#auth-form").onsubmit = (event) => { event.preventDefault(); toast("Código enviado!"); go("/reset"); };
+  authLayout("Recuperar senha",
+      '<label class="field">E-mail<input required name="contact" type="email" placeholder="voce@email.com"></label><p>Enviaremos um código para confirmar sua identidade.</p>',
+      "Enviar código",
+      '<a href="#/login">Voltar ao login</a>');
+
+  document.querySelector("#auth-form").onsubmit = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    try {
+      const result = await api.auth.forgot(form.contact.value);
+      if (result.token) storage.set("resetToken", result.token);
+      toast("Código enviado!");
+      go("/reset");
+    } catch (error) {
+      showFormError(error.message);
+    }
+  };
 }
 
 function reset() {
-  authLayout("Criar nova senha", '<label class="field">Nova senha<input required minlength="6" name="password" type="password"></label><label class="field">Confirmar senha<input required name="confirm" type="password"></label>', "Alterar senha", "");
-  document.querySelector("#auth-form").onsubmit = (event) => { event.preventDefault(); if (event.currentTarget.password.value !== event.currentTarget.confirm.value) return showFormError("As senhas precisam ser iguais."); toast("Senha alterada com sucesso!"); go("/login"); };
+  authLayout("Criar nova senha",
+      '<label class="field">Nova senha<input required minlength="6" name="password" type="password"></label><label class="field">Confirmar senha<input required name="confirm" type="password"></label>',
+      "Alterar senha",
+      "");
+
+  document.querySelector("#auth-form").onsubmit = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+
+    if (form.password.value !== form.confirm.value) {
+      return showFormError("As senhas precisam ser iguais.");
+    }
+
+    try {
+      const token = storage.get("resetToken", "");
+      await api.request("/auth/reset-password", {
+        method: "POST",
+        body: { token, password: form.password.value }
+      });
+      storage.remove("resetToken");
+      toast("Senha alterada com sucesso!");
+      go("/login");
+    } catch (error) {
+      showFormError(error.message);
+    }
+  };
 }
 
 // Application pages -----------------------------------------------------------

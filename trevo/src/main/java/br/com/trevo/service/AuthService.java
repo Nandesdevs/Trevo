@@ -2,11 +2,8 @@ package br.com.trevo.service;
 
 import br.com.trevo.database.model.UsuarioEntity;
 import br.com.trevo.database.repository.IUsuarioRepository;
-import br.com.trevo.dto.UsuarioCadastroDto;
-import br.com.trevo.dto.UsuarioLoginDto;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.apache.coyote.BadRequestException;
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 
@@ -15,33 +12,53 @@ import org.springframework.stereotype.Service;
 public class AuthService {
 
     private final IUsuarioRepository usuarioRepository;
+    private final JwtService jwtService;
 
     @Transactional
-    public void cadastroUsuario(UsuarioCadastroDto usuarioCadastroDto) throws BadRequestException {
-        UsuarioEntity usuario = usuarioRepository.findByEmail(usuarioCadastroDto.getEmail())
-                .orElse(null);
-
-        if (usuario != null) {
-            throw new BadRequestException("Usuario já cadastrado com este email");
+    public UsuarioEntity cadastrar(String nome, String email, String senha) {
+        if (usuarioRepository.existsByEmail(email)) {
+            throw new RuntimeException("Email já cadastrado");
         }
 
-        String hash = BCrypt.hashpw(usuarioCadastroDto.getSenha(), BCrypt.gensalt());
+        String hash = BCrypt.hashpw(senha, BCrypt.gensalt());
 
-        usuarioRepository.save(UsuarioEntity.builder()
-                        .nome(usuarioCadastroDto.getNome())
-                        .email(usuarioCadastroDto.getEmail())
-                        .senha(hash)
-                .build());
+        UsuarioEntity usuario = UsuarioEntity.builder()
+                .nome(nome)
+                .email(email)
+                .senha(hash)
+                .build();
+
+        return usuarioRepository.save(usuario);
     }
 
-    public UsuarioEntity login(UsuarioLoginDto usuarioLoginDto) throws BadRequestException{
-        UsuarioEntity usuario = usuarioRepository.findByEmail(usuarioLoginDto.getEmail())
-                .orElseThrow(() -> new BadRequestException("Email ou senha inválidos"));
+    public UsuarioEntity login(String email, String senha) {
+        UsuarioEntity usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Email ou senha inválidos"));
 
-        if (!BCrypt.checkpw(usuario.getSenha(), usuario.getSenha())) {
-            throw new BadRequestException("Email ou senha inválidos");
+        if (!BCrypt.checkpw(senha, usuario.getSenha())) {
+            throw new RuntimeException("Email ou senha inválidos");
         }
 
         return usuario;
+    }
+
+    @Transactional
+    public String gerarTokenRecuperacao(String email) {
+        UsuarioEntity usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Email não encontrado"));
+
+        String token = jwtService.gerarReset(usuario.getId());
+        return token;
+    }
+
+    @Transactional
+    public void redefinirSenha(String token, String novaSenha) {
+        Integer usuarioId = jwtService.extrairUsuarioIdReset(token);
+
+        UsuarioEntity usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+
+        usuario.setSenha(BCrypt.hashpw(novaSenha, BCrypt.gensalt()));
+        usuarioRepository.save(usuario);
     }
 }
