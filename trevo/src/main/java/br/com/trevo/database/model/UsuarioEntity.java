@@ -22,8 +22,6 @@ public class UsuarioEntity {
     private String nome;
     @Column(nullable = false, unique = true)
     private String email;
-    @Column(length = 30)
-    private String apelido;
     private String biografia;
 
     @ManyToOne
