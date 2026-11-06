@@ -20,5 +20,6 @@ spring:
       max-request-size: 50MB
 
 app:
-  upload:
-    dir: uploads
+  trevo:
+    uploads:
+      dir: uploads

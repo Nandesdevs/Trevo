@@ -27,7 +27,7 @@ public class UsuarioEntity {
     private String biografia;
 
     @ManyToOne
-    @JoinColumn(name = "foto_perfil_id", nullable = false)
+    @JoinColumn(name = "foto_perfil_id")
     private ArquivoEntity fotoDePerfil;
 
     @Column(nullable = false)

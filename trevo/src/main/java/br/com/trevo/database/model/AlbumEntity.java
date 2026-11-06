@@ -22,7 +22,7 @@ public class AlbumEntity {
     private String descricao;
 
     @ManyToOne
-    @JoinColumn(name = "foto_capa_id", nullable = false)
+    @JoinColumn(name = "foto_capa_id")
     private ArquivoEntity fotoDaCapa;
 
     @ManyToOne
