@@ -71,4 +71,4 @@ Spring Security (JWT)	JavaScript (vanilla)
 jBCrypt
 -------
 Lombok
-
+------
