@@ -20,24 +20,31 @@ public class JwtFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
 
-        String header = request.getHeader("Authorization");
-
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);   // remove "Bearer "
-
-            try {
-                Integer usuarioId = jwtService.extrairUsuarioId(token);
-                request.setAttribute("usuarioId", usuarioId);   // disponibiliza pro Controller
-            } catch (Exception e) {
-                // token inválido/expirado — segue sem usuário logado
-                // o Controller decide se bloqueia ou não
-            }
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            chain.doFilter(request, response);
+            return;
         }
 
-        chain.doFilter(request, response);   // continua a requisição
+        String path = request.getRequestURI();
+        boolean rotaPublica = path.contains("/auth/");
+
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            try {
+                Integer usuarioId = jwtService.extrairUsuarioId(header.substring(7));
+                request.setAttribute("usuarioId", usuarioId);
+            } catch (Exception ignored) {}
+        }
+
+        if (!rotaPublica && request.getAttribute("usuarioId") == null) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"message\":\"Não autenticado\"}");
+            return;
+        }
+
+        chain.doFilter(request, response);
     }
 }

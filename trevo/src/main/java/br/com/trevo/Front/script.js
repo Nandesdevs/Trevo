@@ -209,14 +209,66 @@ function albumCard(item) {
   return `<article class="card"><div class="cover">${cover(item)}</div><div class="card-body"><h3>${escapeHtml(item.name)}</h3><p>${escapeHtml(item.description || "Sem descrição")}</p><div class="card-footer"><button class="btn secondary" onclick="go('/album/${item.id}')">Abrir</button><button class="menu-btn" onclick="openAlbumMenu(${item.id})" aria-label="Opções do álbum">•••</button></div></div></article>`;
 }
 
-function home() {
-  const art = state.theme === "light" ? '<img class="home-light-clover" src="assets/trevo-home-claro.png" alt="Trevo de quatro folhas">' : clover("hero-clover");
-  shell(`<section class="page"><div class="page-head"><div><h1>Página inicial</h1><p>Organize suas memórias no seu próprio Trevo.</p></div><button class="btn" onclick="openModal('album')">＋ Criar álbum</button></div><div class="grid">${state.albums.map(albumCard).join("")}</div><section class="hero"><div class="welcome"><h1>Suas histórias começam aqui.</h1><p>Crie álbuns, adicione fotos, convide colaboradores e compartilhe os momentos que importam.</p></div><div class="clover-art">${art}</div></section></section>`);
+async function home() {
+  let albums = [];
+  try {
+    albums = await api.albums.list();
+  } catch (e) { toast(e.message); }
+
+  shell(`<section class="page">
+    <div class="page-head">
+      <div><h1>Página inicial</h1><p>Organize suas memórias no seu próprio Trevo.</p></div>
+      <button class="btn" onclick="openModal('album')">＋ Criar álbum</button>
+    </div>
+    <div class="grid">
+      ${albums.map(a => `
+        <article class="card">
+          <div class="cover">🌿</div>
+          <div class="card-body">
+            <h3>${escapeHtml(a.name)}</h3>
+            <p>${escapeHtml(a.description || "Sem descrição")}</p>
+            <div class="card-footer">
+              <button class="btn secondary" onclick="go('/album/${a.id}')">Abrir</button>
+              <button class="menu-btn" onclick="openAlbumMenu(${a.id})">•••</button>
+            </div>
+          </div>
+        </article>
+      `).join("")}
+    </div>
+  </section>`);
 }
 
-function album() {
-  const selected = state.albums.find((item) => item.id === Number(route().split("/").pop())) || state.albums[0];
-  shell(`<section class="page"><div class="page-head"><div><h1>${escapeHtml(selected.name)}</h1><p>${escapeHtml(selected.description || "")}</p></div><button class="btn" onclick="openModal('category')">＋ Categoria</button></div><div class="grid">${state.categories.map((item) => `<article class="card"><div class="cover">${cover(item)}</div><div class="card-body"><h3>${escapeHtml(item.name)}</h3><div class="card-footer"><button class="btn secondary" onclick="go('/comments/${item.id}')">Abrir</button><button class="menu-btn" onclick="openCategoryMenu(${item.id})">•••</button></div></div></article>`).join("")}</div></section>`);
+async function album() {
+  const albumId = Number(route().split("/").pop());
+  const selected = state.albums.find(item => item.id === albumId) || { name: "Álbum", description: "" };
+
+  let categorias = [];
+  try {
+    categorias = await api.categories.list(albumId);
+  } catch (e) {
+    toast(e.message);
+  }
+
+  shell(`<section class="page">
+    <div class="page-head">
+      <div><h1>${escapeHtml(selected.name)}</h1><p>${escapeHtml(selected.description || "")}</p></div>
+      <button class="btn" onclick="openModal('category', null, ${albumId})">＋ Categoria</button>
+    </div>
+    <div class="grid">
+      ${categorias.length ? categorias.map(c => `
+        <article class="card">
+          <div class="cover">📁</div>
+          <div class="card-body">
+            <h3>${escapeHtml(c.name)}</h3>
+            <div class="card-footer">
+              <button class="btn secondary" onclick="go('/comments/${c.id}')">Abrir</button>
+              <button class="menu-btn" onclick="openCategoryMenu(${c.id})">•••</button>
+            </div>
+          </div>
+        </article>
+      `).join("") : '<p class="no-comments">Nenhuma categoria ainda.</p>'}
+    </div>
+  </section>`);
 }
 
 function comments() {
@@ -236,7 +288,7 @@ function trash() {
 }
 
 // Mutations and modal ---------------------------------------------------------
-function openModal(kind, id) {
+function openModal(kind, id, parentAlbumId) {
   const list = kind === "album" ? state.albums : state.categories;
   const item = list.find?.((entry) => entry.id === id);
   const isPhoto = kind === "photo";
@@ -244,7 +296,29 @@ function openModal(kind, id) {
   const body = `<form id="modal-form"><label class="field">${label[0].toUpperCase() + label.slice(1)}<input name="name" required value="${escapeHtml(item?.name || "")}" placeholder="Nome do ${label}"></label>${isPhoto ? '<label class="field">Escolher arquivo<input name="file" type="file" accept="image/*,video/*" required></label>' : ""}${kind === "album" ? `<label class="field">Descrição<textarea name="description">${escapeHtml(item?.description || "")}</textarea></label>` : ""}<label class="field">Ícone<input name="emoji" value="${item?.emoji || "🌿"}" maxlength="2"></label><div class="modal-actions"><button type="button" class="btn outline" onclick="closeModal()">Cancelar</button><button class="btn">Salvar</button></div></form>`;
   document.body.insertAdjacentHTML("beforeend", `<div class="modal-backdrop" id="modal-backdrop"><section class="modal" role="dialog" aria-modal="true"><header><strong>${item ? "Editar" : "Criar"}</strong><button class="icon-btn" onclick="closeModal()">×</button></header>${body}</section></div>`);
   document.querySelector("#modal-backdrop").onclick = (event) => { if (event.target.id === "modal-backdrop") closeModal(); };
-  document.querySelector("#modal-form").onsubmit = (event) => { event.preventDefault(); if (isPhoto) { toast("Upload: POST /categories/:categoryId/media"); return closeModal(); } const data = Object.fromEntries(new FormData(event.currentTarget)); if (item) Object.assign(item, data); else list.push({ id: Date.now(), ...data }); save(); closeModal(); toast(`${label[0].toUpperCase() + label.slice(1)} salvo com sucesso!`); router(); };
+  document.querySelector("#modal-form").onsubmit = async (event) => {
+    event.preventDefault();
+    const data = Object.fromEntries(new FormData(event.currentTarget));
+
+    try {
+      if (kind === "album") {
+        if (id) await api.albums.update(id, { name: data.name, description: data.description });
+        else await api.albums.create({ name: data.name, description: data.description });
+      } else if (kind === "category") {
+        if (id) await api.categories.update(id, { name: data.name });
+        else await api.categories.create(parentAlbumId, { name: data.name });
+      } else if (kind === "photo") {
+        toast("Upload ainda não implementado");
+        return closeModal();
+      }
+
+      closeModal();
+      toast("Salvo com sucesso!");
+      router();
+    } catch (e) {
+      toast(e.message);
+    }
+  };
 }
 
 function openDeleteMenu(type, id) {
