@@ -37,7 +37,7 @@ public class ArquivoEntity {
         private TipoArquivo tipo;
 
         @ManyToOne()
-        @JoinColumn(name = "sub_album_id", nullable = false)
+        @JoinColumn(name = "sub_album_id")
         private SubAlbumEntity subAlbum;
 
 }

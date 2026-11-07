@@ -320,8 +320,16 @@ async function profile() {
         <button type="button" class="btn danger" onclick="deleteAccount()">Excluir conta</button>
       </div>
       <div class="profile-photo">
-        <div class="avatar"><img src="assets/logo-trevo-transparente.png" alt="Símbolo do Trevo"></div>
+        <div class="avatar">
+          ${user.fotoUrl
+      ? `<img src="http://localhost:8080/api/v1${user.fotoUrl}" alt="Avatar">`
+      : `<img src="assets/logo-trevo-transparente.png" alt="Símbolo do Trevo">`}
+        </div>
         <h2>${escapeHtml(user.name)}</h2>
+        <label class="btn secondary" style="cursor:pointer">
+          Trocar foto
+          <input type="file" accept="image/*" hidden onchange="uploadAvatar(this)">
+        </label>
       </div>
     </form>
   </section>`);
@@ -336,11 +344,31 @@ async function profile() {
       });
       toast("Perfil atualizado!");
       router();
-    } catch (e) {
-      toast(e.message);
-    }
+    } catch (e) { toast(e.message); }
   };
 }
+
+async function uploadAvatar(input) {
+  if (!input.files.length) return;
+  const formData = new FormData();
+  formData.append("file", input.files[0]);
+  const token = storage.get("token", null);
+
+  try {
+    const res = await fetch(`${CONFIG.apiBaseUrl}/me/avatar`, {
+      method: "POST",
+      headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+      body: formData,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || "Falha no upload");
+    }
+    toast("Foto atualizada!");
+    router();
+  } catch (e) { toast(e.message);}
+}
+
 
 async function trash() {
   let itens = [];
@@ -453,10 +481,48 @@ function openDeleteMenu(type, id, name) {
       <header><strong>Opções</strong><button class="icon-btn" onclick="closeModal()">×</button></header>
       <div class="modal-content">
         <h2>${escapeHtml(name)}</h2>
+        <button class="menu-action" onclick="editarItem('${type}', ${id}, '${escapeHtml(name)}')">✏ Editar</button>
         <button class="menu-action danger-action" onclick="moveToTrash('${type}', ${id})">🗑 Excluir ${type}</button>
       </div>
     </section>
   </div>`);
+}
+
+async function editarItem(type, id, name) {
+  closeModal();
+
+  const body = `<form id="modal-form">
+    <label class="field">Nome<input name="name" required value="${escapeHtml(name)}"></label>
+    ${type === "album" ? '<label class="field">Descrição<textarea name="description"></textarea></label>' : ""}
+    <div class="modal-actions">
+      <button type="button" class="btn outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn">Salvar</button>
+    </div>
+  </form>`;
+
+  document.body.insertAdjacentHTML("beforeend", `<div class="modal-backdrop" id="modal-backdrop">
+    <section class="modal">
+      <header><strong>Editar</strong><button class="icon-btn" onclick="closeModal()">×</button></header>
+      ${body}
+    </section>
+  </div>`);
+
+  document.querySelector("#modal-form").onsubmit = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form));
+
+    try {
+      if (type === "album") {
+        await api.albums.update(id, { name: data.name, description: data.description || "" });
+      } else {
+        await api.categories.update(id, { name: data.name });
+      }
+      closeModal();
+      toast("Atualizado!");
+      router();
+    } catch (e) { toast(e.message); }
+  };
 }
 
 function openAlbumMenu(id, name) { openDeleteMenu("album", id, name); }
@@ -493,7 +559,7 @@ function router() {
   (pages[route()] || (() => go(state.user ? "/home" : "/login")))();
 }
 
-Object.assign(window, { back, closeModal, deleteAccount, deleteComment, deleteMedia, emptyTrash, go, moveToTrash, openAlbumMenu, openCategoryMenu, openModal, restoreItem, toggleTheme });
+Object.assign(window, { back, closeModal, deleteAccount, deleteComment, deleteMedia, emptyTrash, go, moveToTrash, openAlbumMenu, openCategoryMenu, openModal, restoreItem, toggleTheme, uploadAvatar });
 document.body.classList.toggle("dark", state.theme === "dark");
 window.addEventListener("hashchange", router);
 router();

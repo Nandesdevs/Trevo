@@ -30,7 +30,7 @@ public class AlbumRestController {
         return AlbumResponse.from(album);
     }
 
-    @PostMapping("/{id}")
+    @PatchMapping("/{id}")
     @ResponseStatus(HttpStatus.CREATED)
     public AlbumResponse editar(@PathVariable Integer id, @RequestBody AlbumRequest req, @RequestAttribute("usuarioId") Integer usuarioId) {
         AlbumEntity album = albumService.editar(id, req.name(), req.description(), usuarioId);
@@ -42,4 +42,6 @@ public class AlbumRestController {
     public void excluir(@PathVariable Integer id, @RequestAttribute("usuarioId") Integer usuarioId) {
         albumService.deletar(id, usuarioId);
     }
+
+
 }

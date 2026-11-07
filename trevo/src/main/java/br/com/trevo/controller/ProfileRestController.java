@@ -1,11 +1,15 @@
 package br.com.trevo.controller;
 
+import br.com.trevo.database.model.ArquivoEntity;
 import br.com.trevo.database.model.UsuarioEntity;
+import br.com.trevo.database.repository.IUsuarioRepository;
 import br.com.trevo.dto.ProfileRequest;
 import br.com.trevo.dto.ProfileResponse;
+import br.com.trevo.service.ArquivoService;
 import br.com.trevo.service.UsuarioService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/me")
@@ -13,17 +17,29 @@ import org.springframework.web.bind.annotation.*;
 public class ProfileRestController {
 
     private final UsuarioService usuarioService;
+    private final IUsuarioRepository usuarioRepository;
+    private final ArquivoService arquivoService;
 
     @GetMapping
     public ProfileResponse get(@RequestAttribute("usuarioId") Integer usuarioId) {
         UsuarioEntity u = usuarioService.buscar(usuarioId);
-        return new ProfileResponse(u.getId(), u.getNome(), u.getEmail(), u.getBiografia());
+        return ProfileResponse.from(u);
     }
 
     @PatchMapping
     public ProfileResponse update(@RequestBody ProfileRequest req,
                                   @RequestAttribute("usuarioId") Integer usuarioId) {
         UsuarioEntity u = usuarioService.atualizar(usuarioId, req.name(), req.bio());
-        return new ProfileResponse(u.getId(), u.getNome(), u.getEmail(), u.getBiografia());
+        return ProfileResponse.from(u);
+    }
+
+    @PostMapping("/avatar")
+    public ProfileResponse uploadAvatar(@RequestParam("file") MultipartFile file,
+                                        @RequestAttribute("usuarioId") Integer usuarioId) {
+        UsuarioEntity u = usuarioService.buscar(usuarioId);
+        ArquivoEntity avatar = arquivoService.salvarAvatar(file, u);
+        u.setFotoDePerfil(avatar);
+        usuarioRepository.save(u);
+        return ProfileResponse.from(u);
     }
 }

@@ -3,6 +3,7 @@ package br.com.trevo.service;
 import br.com.trevo.database.model.ArquivoEntity;
 import br.com.trevo.database.model.SubAlbumEntity;
 import br.com.trevo.database.model.TipoArquivo;
+import br.com.trevo.database.model.UsuarioEntity;
 import br.com.trevo.database.repository.IArquivoRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -97,5 +98,29 @@ public class ArquivoService {
         a.setDeletado(true);
         a.setDeletadoEm(LocalDateTime.now());
         arquivoRepository.save(a);
+    }
+
+    public ArquivoEntity salvarAvatar(MultipartFile file, UsuarioEntity usuario) {
+        try {
+            String original = file.getOriginalFilename();
+            String extensao = original != null && original.contains(".")
+                    ? original.substring(original.lastIndexOf('.')) : "";
+            String nomeUnico = UUID.randomUUID() + extensao;
+
+            Path destino = Path.of(uploadDir, nomeUnico).toAbsolutePath();
+            Files.createDirectories(destino.getParent());
+            file.transferTo(destino.toFile());
+
+            ArquivoEntity arquivo = ArquivoEntity.builder()
+                    .nome(original)
+                    .caminho(destino.toString())
+                    .tipo(TipoArquivo.FOTO_PERFIL)
+                    .subAlbum(null)   // perfil não tem subálbum
+                    .build();
+
+            return arquivoRepository.save(arquivo);
+        } catch (IOException e) {
+            throw new RuntimeException("Falha ao salvar avatar: " + e.getMessage(), e);
+        }
     }
 }
