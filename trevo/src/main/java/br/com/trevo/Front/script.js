@@ -1,7 +1,5 @@
-/** Trevo SPA — código organizado e preparado para API REST. */
-
 const CONFIG = {
-  apiMode: "api", // Mude para "api" ao conectar o servidor.
+  apiMode: "api",
   apiBaseUrl: window.TREVO_API_URL || "http://localhost:3000/api/v1",
   storagePrefix: "trevo-",
 };

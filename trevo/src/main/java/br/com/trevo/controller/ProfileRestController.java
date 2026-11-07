@@ -27,15 +27,13 @@ public class ProfileRestController {
     }
 
     @PatchMapping
-    public ProfileResponse update(@RequestBody ProfileRequest req,
-                                  @RequestAttribute("usuarioId") Integer usuarioId) {
+    public ProfileResponse update(@RequestBody ProfileRequest req, @RequestAttribute("usuarioId") Integer usuarioId) {
         UsuarioEntity u = usuarioService.atualizar(usuarioId, req.name(), req.bio());
         return ProfileResponse.from(u);
     }
 
     @PostMapping("/avatar")
-    public ProfileResponse uploadAvatar(@RequestParam("file") MultipartFile file,
-                                        @RequestAttribute("usuarioId") Integer usuarioId) {
+    public ProfileResponse uploadAvatar(@RequestParam("file") MultipartFile file, @RequestAttribute("usuarioId") Integer usuarioId) {
         UsuarioEntity u = usuarioService.buscar(usuarioId);
         ArquivoEntity avatar = arquivoService.salvarAvatar(file, u);
         u.setFotoDePerfil(avatar);
