@@ -28,7 +28,7 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         String path = request.getRequestURI();
-        boolean rotaPublica = path.contains("/auth/");
+        boolean rotaPublica = path.contains("/auth/") || path.contains("/arquivos/");
 
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {

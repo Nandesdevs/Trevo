@@ -229,7 +229,7 @@ async function home() {
             <p>${escapeHtml(a.description || "Sem descrição")}</p>
             <div class="card-footer">
               <button class="btn secondary" onclick="go('/album/${a.id}')">Abrir</button>
-              <button class="menu-btn" onclick="openAlbumMenu(${a.id})">•••</button>
+              <button class="menu-btn" onclick="openAlbumMenu(${a.id}, '${escapeHtml(a.name)}')">•••</button>
             </div>
           </div>
         </article>
@@ -245,9 +245,7 @@ async function album() {
   let categorias = [];
   try {
     categorias = await api.categories.list(albumId);
-  } catch (e) {
-    toast(e.message);
-  }
+  } catch (e) { toast(e.message); }
 
   shell(`<section class="page">
     <div class="page-head">
@@ -262,7 +260,7 @@ async function album() {
             <h3>${escapeHtml(c.name)}</h3>
             <div class="card-footer">
               <button class="btn secondary" onclick="go('/comments/${c.id}')">Abrir</button>
-              <button class="menu-btn" onclick="openCategoryMenu(${c.id})">•••</button>
+              <button class="menu-btn" onclick="openCategoryMenu(${c.id}, '${escapeHtml(c.name)}')">•••</button>
             </div>
           </div>
         </article>
@@ -271,45 +269,173 @@ async function album() {
   </section>`);
 }
 
-function comments() {
-  shell(`<section class="page"><div class="page-head"><h1>Momentos especiais</h1><button class="btn" onclick="openModal('photo')">＋ Adicionar fotos e vídeos</button></div><div class="comment-layout"><div class="content-preview"><div class="cover">📷</div><h2>Foto da categoria</h2><p>Compartilhe seus registros com quem você convidar.</p></div><aside class="comments"><h2>Comentários</h2><div>${state.comments.length ? state.comments.map((item) => `<div class="comment"><div><b>${escapeHtml(item.author)}</b>${escapeHtml(item.text)}</div><button class="delete-comment" onclick="deleteComment(${item.id})">×</button></div>`).join("") : '<p class="no-comments">Ainda não há comentários.</p>'}</div><form class="comment-form" id="comment-form"><input required placeholder="Escreva um comentário..."><button class="btn">Enviar</button></form></aside></div></section>`);
-  document.querySelector("#comment-form").onsubmit = (event) => { event.preventDefault(); state.comments.push({ id: Date.now(), author: state.user?.name || "Você", text: event.currentTarget.querySelector("input").value }); save(); router(); };
+async function comments() {
+  const categoryId = Number(route().split("/").pop());
+
+  let midias = [];
+  try {
+    midias = await api.request(`/categories/${categoryId}/media`);
+  } catch (e) { toast(e.message); }
+
+  shell(`<section class="page">
+    <div class="page-head">
+      <h1>Momentos especiais</h1>
+      <button class="btn" onclick="openModal('photo', null, ${categoryId})">＋ Adicionar fotos e vídeos</button>
+    </div>
+    <div class="comment-layout">
+      <div class="content-preview">
+        <div class="grid">
+          ${midias.length ? midias.map(m => `
+            <article class="card">
+              ${m.tipo === "VIDEO"
+      ? `<video controls src="http://localhost:8080/api/v1${m.url}" style="width:100%;height:145px;object-fit:cover"></video>`
+      : `<div class="cover"><img src="http://localhost:8080/api/v1${m.url}" alt=""></div>`}
+              <div class="card-body">
+                <h3>${escapeHtml(m.nome)}</h3>
+                <div class="card-footer">
+                  <button class="menu-btn" onclick="deleteMedia(${m.id})">🗑</button>
+                </div>
+              </div>
+            </article>
+          `).join("") : '<p class="no-comments">Nenhuma mídia ainda.</p>'}
+        </div>
+      </div>
+    </div>
+  </section>`);
 }
 
-function profile() {
-  const user = state.user || { name: "Visitante", email: "visitante@trevo.com" };
-  shell(`<section class="page"><div class="page-head"><h1>Perfil</h1></div><form class="profile" id="profile-form"><div class="profile-main"><div class="stats"><div>${state.albums.length}<br><small>Álbuns</small></div><div>${state.categories.length}<br><small>Categorias</small></div><div>0<br><small>Fotos</small></div></div><label class="field">Apelido<input name="name" value="${escapeHtml(user.name)}"></label><label class="field">Biografia<textarea name="bio" placeholder="Conte um pouco sobre você">${escapeHtml(user.bio || "")}</textarea></label><button class="btn">Salvar alterações</button> <button type="button" class="btn danger" onclick="deleteAccount()">Excluir conta</button></div><div class="profile-photo"><div class="avatar"><img src="assets/logo-trevo-transparente.png" alt="Símbolo do Trevo"></div><h2>${escapeHtml(user.name)}</h2></div></form></section>`);
-  document.querySelector("#profile-form").onsubmit = (event) => { event.preventDefault(); state.user = { ...user, name: event.currentTarget.name.value, bio: event.currentTarget.bio.value }; save(); toast("Perfil atualizado!"); };
+async function profile() {
+  let user = { name: "Visitante", email: "", bio: "" };
+  try {
+    user = await api.request("/me");
+  } catch (e) { toast(e.message); }
+
+  shell(`<section class="page">
+    <div class="page-head"><h1>Perfil</h1></div>
+    <form class="profile" id="profile-form">
+      <div class="profile-main">
+        <label class="field">Nome<input name="name" value="${escapeHtml(user.name)}"></label>
+        <label class="field">Biografia<textarea name="bio" placeholder="Conte um pouco sobre você">${escapeHtml(user.bio || "")}</textarea></label>
+        <button class="btn">Salvar alterações</button>
+        <button type="button" class="btn danger" onclick="deleteAccount()">Excluir conta</button>
+      </div>
+      <div class="profile-photo">
+        <div class="avatar"><img src="assets/logo-trevo-transparente.png" alt="Símbolo do Trevo"></div>
+        <h2>${escapeHtml(user.name)}</h2>
+      </div>
+    </form>
+  </section>`);
+
+  document.querySelector("#profile-form").onsubmit = async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    try {
+      await api.request("/me", {
+        method: "PATCH",
+        body: { name: form.name.value, bio: form.bio.value }
+      });
+      toast("Perfil atualizado!");
+      router();
+    } catch (e) {
+      toast(e.message);
+    }
+  };
 }
 
-function trash() {
-  const cards = state.trash.map((item) => `<article class="card"><div class="cover">${cover(item)}</div><div class="card-body"><h3>${escapeHtml(item.name)}</h3><p>Item excluído</p><div class="trash-actions"><button class="btn secondary" onclick="restoreItem(${item.id})">↶ Restaurar</button><button class="menu-btn" onclick="permanentlyDelete(${item.id})">🗑</button></div></div></article>`).join("");
-  shell(`<section class="page"><div class="page-head"><div><h1>Lixeira</h1><p>Itens excluídos podem ser restaurados.</p></div>${state.trash.length ? '<button class="btn danger" onclick="emptyTrash()">Esvaziar lixeira</button>' : ""}</div>${cards ? `<div class="grid">${cards}</div>` : `<div class="empty"><div class="empty-icon">${clover("empty-clover")}</div><h2>Não há itens na lixeira</h2><p>Álbuns, categorias e fotos excluídos aparecerão aqui.</p></div>`}</section>`);
+async function trash() {
+  let itens = [];
+  try {
+    itens = await api.request("/trash");
+  } catch (e) { toast(e.message); }
+
+  shell(`<section class="page">
+    <div class="page-head">
+      <div><h1>Lixeira</h1><p>Itens excluídos podem ser restaurados.</p></div>
+      ${itens.length ? '<button class="btn danger" onclick="emptyTrash()">Esvaziar lixeira</button>' : ""}
+    </div>
+    ${itens.length ? `<div class="grid">${itens.map(m => `
+      <article class="card">
+        ${m.tipo === "VIDEO"
+      ? `<video controls src="http://localhost:8080/api/v1${m.url}" style="width:100%;height:145px;object-fit:cover"></video>`
+      : `<div class="cover"><img src="http://localhost:8080/api/v1${m.url}" alt=""></div>`}
+        <div class="card-body">
+          <h3>${escapeHtml(m.nome)}</h3>
+          <p>Item excluído</p>
+          <div class="trash-actions">
+            <button class="btn secondary" onclick="restoreItem(${m.id})">↶ Restaurar</button>
+          </div>
+        </div>
+      </article>
+    `).join("")}</div>` : `<div class="empty"><h2>Não há itens na lixeira</h2></div>`}
+  </section>`);
+}
+
+async function deleteMedia(id) {
+  if (!confirm("Mover para a lixeira?")) return;
+  try {
+    await api.request(`/media/${id}/trash`, { method: "PATCH" });
+    toast("Movido para a lixeira");
+    router();
+  } catch (e) { toast(e.message); }
 }
 
 // Mutations and modal ---------------------------------------------------------
 function openModal(kind, id, parentAlbumId) {
-  const list = kind === "album" ? state.albums : state.categories;
-  const item = list.find?.((entry) => entry.id === id);
   const isPhoto = kind === "photo";
-  const label = kind === "album" ? "álbum" : kind === "category" ? "categoria" : "foto";
-  const body = `<form id="modal-form"><label class="field">${label[0].toUpperCase() + label.slice(1)}<input name="name" required value="${escapeHtml(item?.name || "")}" placeholder="Nome do ${label}"></label>${isPhoto ? '<label class="field">Escolher arquivo<input name="file" type="file" accept="image/*,video/*" required></label>' : ""}${kind === "album" ? `<label class="field">Descrição<textarea name="description">${escapeHtml(item?.description || "")}</textarea></label>` : ""}<label class="field">Ícone<input name="emoji" value="${item?.emoji || "🌿"}" maxlength="2"></label><div class="modal-actions"><button type="button" class="btn outline" onclick="closeModal()">Cancelar</button><button class="btn">Salvar</button></div></form>`;
-  document.body.insertAdjacentHTML("beforeend", `<div class="modal-backdrop" id="modal-backdrop"><section class="modal" role="dialog" aria-modal="true"><header><strong>${item ? "Editar" : "Criar"}</strong><button class="icon-btn" onclick="closeModal()">×</button></header>${body}</section></div>`);
-  document.querySelector("#modal-backdrop").onclick = (event) => { if (event.target.id === "modal-backdrop") closeModal(); };
+  const isAlbum = kind === "album";
+  const label = isAlbum ? "álbum" : kind === "category" ? "categoria" : "foto";
+
+  const body = `<form id="modal-form">
+    ${!isPhoto ? `<label class="field">${label[0].toUpperCase() + label.slice(1)}
+      <input name="name" required value="" placeholder="Nome do ${label}">
+    </label>` : ""}
+    ${isPhoto ? '<label class="field">Escolher arquivo<input name="file" type="file" accept="image/*,video/*" required></label>' : ""}
+    ${isAlbum ? `<label class="field">Descrição<textarea name="description"></textarea></label>` : ""}
+    <div class="modal-actions">
+      <button type="button" class="btn outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn">Salvar</button>
+    </div>
+  </form>`;
+
+  document.body.insertAdjacentHTML("beforeend", `<div class="modal-backdrop" id="modal-backdrop">
+    <section class="modal" role="dialog" aria-modal="true">
+      <header><strong>Criar</strong><button class="icon-btn" onclick="closeModal()">×</button></header>
+      ${body}
+    </section>
+  </div>`);
+
+  document.querySelector("#modal-backdrop").onclick = (e) => {
+    if (e.target.id === "modal-backdrop") closeModal();
+  };
+
   document.querySelector("#modal-form").onsubmit = async (event) => {
     event.preventDefault();
-    const data = Object.fromEntries(new FormData(event.currentTarget));
+    const form = event.currentTarget;
+    const data = Object.fromEntries(new FormData(form));
 
     try {
-      if (kind === "album") {
-        if (id) await api.albums.update(id, { name: data.name, description: data.description });
-        else await api.albums.create({ name: data.name, description: data.description });
-      } else if (kind === "category") {
-        if (id) await api.categories.update(id, { name: data.name });
-        else await api.categories.create(parentAlbumId, { name: data.name });
-      } else if (kind === "photo") {
-        toast("Upload ainda não implementado");
-        return closeModal();
+      if (isPhoto) {
+        const fileInput = form.querySelector('input[name="file"]');
+        if (!fileInput.files.length) return toast("Selecione um arquivo");
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        const token = storage.get("token", null);
+        const res = await fetch(`${CONFIG.apiBaseUrl}/categories/${parentAlbumId}/media`, {
+          method: "POST",
+          headers: { ...(token && { Authorization: `Bearer ${token}` }) },
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.message || "Falha no upload");
+        }
+      } else if (isAlbum) {
+        await api.albums.create({ name: data.name, description: data.description });
+      } else {
+        await api.categories.create(parentAlbumId, { name: data.name });
       }
 
       closeModal();
@@ -321,29 +447,42 @@ function openModal(kind, id, parentAlbumId) {
   };
 }
 
-function openDeleteMenu(type, id) {
-  const list = type === "album" ? state.albums : state.categories;
-  const item = list.find((entry) => entry.id === id);
-  if (!item) return;
-  document.body.insertAdjacentHTML("beforeend", `<div class="modal-backdrop" id="modal-backdrop"><section class="modal action-menu"><header><strong>Opções do ${type}</strong><button class="icon-btn" onclick="closeModal()">×</button></header><div class="modal-content"><h2>${escapeHtml(item.name)}</h2><button class="menu-action danger-action" onclick="moveToTrash('${type}', ${id})">🗑 Excluir ${type}</button></div></section></div>`);
+function openDeleteMenu(type, id, name) {
+  document.body.insertAdjacentHTML("beforeend", `<div class="modal-backdrop" id="modal-backdrop">
+    <section class="modal action-menu">
+      <header><strong>Opções</strong><button class="icon-btn" onclick="closeModal()">×</button></header>
+      <div class="modal-content">
+        <h2>${escapeHtml(name)}</h2>
+        <button class="menu-action danger-action" onclick="moveToTrash('${type}', ${id})">🗑 Excluir ${type}</button>
+      </div>
+    </section>
+  </div>`);
 }
 
-function moveToTrash(type, id) {
-  const list = type === "album" ? state.albums : state.categories;
-  const item = list.find((entry) => entry.id === id);
-  if (!item) return;
-  state.trash.push({ ...item, type });
-  list.splice(list.indexOf(item), 1);
-  save(); closeModal(); toast(`${type === "album" ? "Álbum" : "Categoria"} movido para a lixeira.`); go("/home");
+function openAlbumMenu(id, name) { openDeleteMenu("album", id, name); }
+function openCategoryMenu(id, name) { openDeleteMenu("categoria", id, name); }
+
+async function moveToTrash(type, id) {
+  try {
+    if (type === "album") {
+      await api.albums.remove(id);
+      closeModal();
+      go("/home");
+    } else {
+      await api.categories.remove(id);
+      closeModal();
+      router();
+    }
+    toast("Excluído.");
+  } catch (e) {
+    toast(e.message);
+  }
 }
 
-function restoreItem(id) { const item = state.trash.find((entry) => entry.id === id); if (!item) return; (item.type === "album" ? state.albums : state.categories).push(item); state.trash = state.trash.filter((entry) => entry.id !== id); save(); router(); }
-function permanentlyDelete(id) { if (confirm("Excluir este item permanentemente?")) { state.trash = state.trash.filter((entry) => entry.id !== id); save(); router(); } }
-function emptyTrash() { if (confirm("Deseja esvaziar a lixeira?")) { state.trash = []; save(); router(); } }
+async function restoreItem(id){ try { await api.request(`/trash/${id}/restore`, { method: "PATCH" }); toast("Restaurado"); router(); } catch (e) { toast(e.message); }}
+async function emptyTrash() { if (!confirm("Esvaziar a lixeira?")) return; try { await api.request("/trash", { method: "DELETE" }); toast("Lixeira esvaziada"); router(); } catch (e) { toast(e.message); } }
 function deleteComment(id) { if (confirm("Excluir este comentário?")) { state.comments = state.comments.filter((entry) => entry.id !== id); save(); router(); } }
 function deleteAccount() { if (confirm("Deseja realmente excluir sua conta?")) { state.user = null; storage.remove("token"); save(); go("/login"); } }
-function openAlbumMenu(id) { openDeleteMenu("album", id); }
-function openCategoryMenu(id) { openDeleteMenu("categoria", id); }
 function back() { route() === "/home" ? go("/login") : history.back(); }
 function toggleTheme() { state.theme = state.theme === "dark" ? "light" : "dark"; localStorage.setItem("trevo-theme", state.theme); document.body.classList.toggle("dark", state.theme === "dark"); router(); }
 
@@ -354,7 +493,7 @@ function router() {
   (pages[route()] || (() => go(state.user ? "/home" : "/login")))();
 }
 
-Object.assign(window, { back, closeModal, deleteAccount, deleteComment, emptyTrash, go, moveToTrash, openAlbumMenu, openCategoryMenu, openModal, permanentlyDelete, restoreItem, toggleTheme });
+Object.assign(window, { back, closeModal, deleteAccount, deleteComment, deleteMedia, emptyTrash, go, moveToTrash, openAlbumMenu, openCategoryMenu, openModal, restoreItem, toggleTheme });
 document.body.classList.toggle("dark", state.theme === "dark");
 window.addEventListener("hashchange", router);
 router();

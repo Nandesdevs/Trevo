@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface IArquivoRepository extends JpaRepository<ArquivoEntity, Integer> {
     List<ArquivoEntity> findBySubAlbumIdAndDeletadoFalse(Integer subAlbumId);
-    List<ArquivoEntity> findByDeletadoTrueOrderByDeletadoEmDesc();
+    List<ArquivoEntity> findByDeletadoTrueAndSubAlbumAlbumUsuarioIdOrderByDeletadoEmDesc(Integer usuarioId);
 }
