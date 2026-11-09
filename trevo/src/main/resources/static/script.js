@@ -267,6 +267,19 @@ async function album() {
   </section>`);
 }
 
+function abrirLightbox(url, tipo) {
+  document.body.insertAdjacentHTML("beforeend", `
+    <div class="modal-backdrop" id="modal-backdrop" onclick="closeModal()" style="background:#000c">
+      <div style="max-width:95vw;max-height:95vh;display:flex;align-items:center;justify-content:center;position:relative">
+        ${tipo === "VIDEO"
+      ? `<video controls autoplay src="${url}" style="max-width:95vw;max-height:90vh;border-radius:8px"></video>`
+      : `<img src="${url}" style="max-width:95vw;max-height:90vh;border-radius:8px">`}
+        <button class="icon-btn" onclick="closeModal()" style="position:absolute;top:-40px;right:0;color:#fff;font-size:32px">×</button>
+      </div>
+    </div>
+  `);
+}
+
 async function comments() {
   const categoryId = Number(route().split("/").pop());
 
@@ -286,8 +299,12 @@ async function comments() {
           ${midias.length ? midias.map(m => `
             <article class="card">
               ${m.tipo === "VIDEO"
-      ? `<video controls src="/api/v1${m.url}" ...></video>`
-      : `<div class="cover"><img src="/api/v1${m.url}" alt=""></div>`}
+      ? `<div onclick="abrirLightbox('/api/v1${m.url}', 'VIDEO')" style="cursor:pointer">
+       <video src="/api/v1${m.url}" style="width:100%;height:145px;object-fit:cover"></video>
+     </div>`
+      : `<div class="cover" style="cursor:pointer" onclick="abrirLightbox('/api/v1${m.url}', 'FOTO')">
+       <img src="/api/v1${m.url}" alt="">
+     </div>`}
               <div class="card-body">
                 <h3>${escapeHtml(m.nome)}</h3>
                 <div class="card-footer">
@@ -382,8 +399,12 @@ async function trash() {
     ${itens.length ? `<div class="grid">${itens.map(m => `
       <article class="card">
         ${m.tipo === "VIDEO"
-      ? `<video controls src="/api/v1${m.url}" ...></video>`
-      : `<div class="cover"><img src="/api/v1${m.url}" alt=""></div>`}
+      ? `<div onclick="abrirLightbox('/api/v1${m.url}', 'VIDEO')" style="cursor:pointer">
+       <video src="/api/v1${m.url}" style="width:100%;height:145px;object-fit:cover"></video>
+     </div>`
+      : `<div class="cover" style="cursor:pointer" onclick="abrirLightbox('/api/v1${m.url}', 'FOTO')">
+       <img src="/api/v1${m.url}" alt="">
+     </div>`}
         <div class="card-body">
           <h3>${escapeHtml(m.nome)}</h3>
           <p>Item excluído</p>
@@ -557,7 +578,7 @@ function router() {
   (pages[route()] || (() => go(state.user ? "/home" : "/login")))();
 }
 
-Object.assign(window, { back, closeModal, deleteAccount, deleteComment, deleteMedia, emptyTrash, go, moveToTrash, openAlbumMenu, openCategoryMenu, openModal, restoreItem, toggleTheme, uploadAvatar });
+Object.assign(window, { back, closeModal,abrirLightbox, deleteAccount, deleteComment, deleteMedia, emptyTrash, go, moveToTrash, openAlbumMenu, openCategoryMenu, openModal, restoreItem, toggleTheme, uploadAvatar });
 document.body.classList.toggle("dark", state.theme === "dark");
 window.addEventListener("hashchange", router);
 router();
