@@ -1,6 +1,6 @@
 const CONFIG = {
   apiMode: "api",
-  apiBaseUrl: window.TREVO_API_URL || "http://localhost:3000/api/v1",
+  apiBaseUrl: window.TREVO_API_URL || "/api/v1",
   storagePrefix: "trevo-",
 };
 
