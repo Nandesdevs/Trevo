@@ -286,8 +286,8 @@ async function comments() {
           ${midias.length ? midias.map(m => `
             <article class="card">
               ${m.tipo === "VIDEO"
-      ? `<video controls src="http://localhost:8080/api/v1${m.url}" style="width:100%;height:145px;object-fit:cover"></video>`
-      : `<div class="cover"><img src="http://localhost:8080/api/v1${m.url}" alt=""></div>`}
+      ? `<video controls src="/api/v1${m.url}" ...></video>`
+      : `<div class="cover"><img src="/api/v1${m.url}" alt=""></div>`}
               <div class="card-body">
                 <h3>${escapeHtml(m.nome)}</h3>
                 <div class="card-footer">
@@ -320,7 +320,7 @@ async function profile() {
       <div class="profile-photo">
         <div class="avatar">
           ${user.fotoUrl
-      ? `<img src="http://localhost:8080/api/v1${user.fotoUrl}" alt="Avatar">`
+      ? `<img src="/api/v1${user.fotoUrl}" alt="Avatar">`
       : `<img src="assets/logo-trevo-transparente.png" alt="Símbolo do Trevo">`}
         </div>
         <h2>${escapeHtml(user.name)}</h2>
@@ -382,8 +382,8 @@ async function trash() {
     ${itens.length ? `<div class="grid">${itens.map(m => `
       <article class="card">
         ${m.tipo === "VIDEO"
-      ? `<video controls src="http://localhost:8080/api/v1${m.url}" style="width:100%;height:145px;object-fit:cover"></video>`
-      : `<div class="cover"><img src="http://localhost:8080/api/v1${m.url}" alt=""></div>`}
+      ? `<video controls src="/api/v1${m.url}" ...></video>`
+      : `<div class="cover"><img src="/api/v1${m.url}" alt=""></div>`}
         <div class="card-body">
           <h3>${escapeHtml(m.nome)}</h3>
           <p>Item excluído</p>
