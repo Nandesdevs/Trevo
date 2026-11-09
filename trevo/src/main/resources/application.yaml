@@ -1,35 +1,26 @@
 spring:
-  application:
-    name: trevo
   datasource:
-    url: jdbc:mysql://localhost:3306/trevo?createDatabaseIfNotExist=true
+    url: ${DATABASE_URL}
     username: ${DATABASE_USERNAME}
     password: ${DATABASE_PASSWORD}
-
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-
-  thymeleaf:
-    cache: false
-
+    show-sql: false
   servlet:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
 
 server:
+  port: ${PORT:8080}
   servlet:
     context-path: /api/v1
 
 app:
   trevo:
     uploads:
-      dir: uploads
+      dir: ${UPLOAD_DIR:/tmp/uploads}
   jwt:
-    secret: "minha-chave-super-secreta-com-pelo-menos-32-caracteres-trevo"
+    secret: ${JWT_SECRET}
     expiration-ms: 86400000
