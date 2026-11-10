@@ -216,8 +216,6 @@ async function home() {
     state.albums = albums;
     save();
   } catch (e) { toast(e.message); }
-...
-}
 
   shell(`<section class="page">
     <div class="page-head">
