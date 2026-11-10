@@ -8,13 +8,10 @@ const CONFIG = {
 
 const seed = {
   user: null,
-  albums: [{ id: 1, name: "Boas-vindas", description: "Seu primeiro álbum no Trevo", emoji: "🌿" }],
-  categories: [{ id: 1, name: "Momentos especiais", emoji: "📸" }],
+  albums: [],
+  categories: [],
   trash: [],
-  comments: [
-    { id: 1, author: "Maria", text: "Que lembrança linda! 💚" },
-    { id: 2, author: "João", text: "Adorei essa foto." },
-  ],
+  comments: [],
 };
 
 // Storage ---------------------------------------------------------------------
