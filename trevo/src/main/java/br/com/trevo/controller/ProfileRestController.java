@@ -33,7 +33,7 @@ public class ProfileRestController {
         return ProfileResponse.from(u);
     }
 
-    @PostMapping("/me/avatar")
+    @PostMapping("/avatar")
     public ProfileResponse uploadAvatar(@RequestBody AvatarRequest req,
                                         @RequestAttribute("usuarioId") Integer usuarioId) {
         UsuarioEntity u = usuarioService.buscar(usuarioId);
