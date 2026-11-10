@@ -3,6 +3,7 @@ package br.com.trevo.controller;
 import br.com.trevo.database.model.ArquivoEntity;
 import br.com.trevo.database.model.SubAlbumEntity;
 import br.com.trevo.database.model.TipoArquivo;
+import br.com.trevo.dto.MediaRequest;
 import br.com.trevo.dto.MediaResponse;
 import br.com.trevo.service.ArquivoService;
 import br.com.trevo.service.SubAlbumService;
@@ -22,18 +23,17 @@ public class MediaRestController {
 
     @PostMapping("/categories/{categoryId}/media")
     @ResponseStatus(HttpStatus.CREATED)
-    public MediaResponse upload(@PathVariable Integer categoryId,
-                                @RequestParam("file") MultipartFile file,
-                                @RequestAttribute("usuarioId") Integer usuarioId) {
+    public MediaResponse criar(@PathVariable Integer categoryId, @RequestBody MediaRequest req, @RequestAttribute("usuarioId") Integer usuarioId) {
 
         SubAlbumEntity sub = subAlbumService.buscar(categoryId, usuarioId);
 
-        TipoArquivo tipo = file.getContentType() != null
-                && file.getContentType().startsWith("video")
+        TipoArquivo tipo = "VIDEO".equalsIgnoreCase(req.tipo())
                 ? TipoArquivo.VIDEO
                 : TipoArquivo.FOTO;
 
-        ArquivoEntity arquivo = arquivoService.salvar(file, tipo, sub);
+        ArquivoEntity arquivo = arquivoService.salvarUrl(
+                req.url(), req.nome(), tipo, sub);
+
         return MediaResponse.from(arquivo);
     }
 

@@ -8,7 +8,7 @@ public record MediaResponse(Integer id, String nome, String tipo, String url) {
                 a.getId(),
                 a.getNome(),
                 a.getTipo().name(),
-                "/arquivos/" + a.getId()
+                a.getUrl()
         );
     }
 }

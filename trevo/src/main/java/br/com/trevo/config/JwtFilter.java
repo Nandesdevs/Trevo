@@ -29,7 +29,6 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String path = request.getRequestURI();
         boolean rotaPublica = path.contains("/auth/")
-                || path.contains("/arquivos/")
                 || !path.contains("/albums")
                 && !path.contains("/categories")
                 && !path.contains("/media")

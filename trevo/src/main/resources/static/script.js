@@ -2,6 +2,8 @@ const CONFIG = {
   apiMode: "api",
   apiBaseUrl: window.TREVO_API_URL || "/api/v1",
   storagePrefix: "trevo-",
+  cloudinaryCloudName: "plhhyo3x",
+  cloudinaryPreset: "trevo_unsigned",
 };
 
 const seed = {
@@ -300,10 +302,10 @@ async function comments() {
             <article class="card">
               ${m.tipo === "VIDEO"
       ? `<div onclick="abrirLightbox('/api/v1${m.url}', 'VIDEO')" style="cursor:pointer">
-       <video src="/api/v1${m.url}" style="width:100%;height:145px;object-fit:cover"></video>
+       <video src="${m.url}" style="width:100%;height:145px;object-fit:cover"></video>
      </div>`
       : `<div class="cover" style="cursor:pointer" onclick="abrirLightbox('/api/v1${m.url}', 'FOTO')">
-       <img src="/api/v1${m.url}" alt="">
+       <img src="${m.url}" alt="">
      </div>`}
               <div class="card-body">
                 <h3>${escapeHtml(m.nome)}</h3>
@@ -337,7 +339,7 @@ async function profile() {
       <div class="profile-photo">
         <div class="avatar">
           ${user.fotoUrl
-      ? `<img src="/api/v1${user.fotoUrl}" alt="Avatar">`
+      ? `<img src="${user.fotoUrl}" alt="Avatar">`
       : `<img src="assets/logo-trevo-transparente.png" alt="Símbolo do Trevo">`}
         </div>
         <h2>${escapeHtml(user.name)}</h2>
@@ -365,23 +367,29 @@ async function profile() {
 
 async function uploadAvatar(input) {
   if (!input.files.length) return;
-  const formData = new FormData();
-  formData.append("file", input.files[0]);
-  const token = storage.get("token", null);
+  const file = input.files[0];
+
+  const cloudData = new FormData();
+  cloudData.append("file", file);
+  cloudData.append("upload_preset", "trevo_unsigned");
+
+  const cloudRes = await fetch(
+      `https://api.cloudinary.com/v1_1/${CONFIG.cloudinaryCloudName}/auto/upload`,
+      { method: "POST", body: cloudData }
+  );
+
+  if (!cloudRes.ok) return toast("Falha no upload");
+
+  const cloudJson = await cloudRes.json();
 
   try {
-    const res = await fetch(`${CONFIG.apiBaseUrl}/me/avatar`, {
+    await api.request("/me/avatar", {
       method: "POST",
-      headers: { ...(token && { Authorization: `Bearer ${token}` }) },
-      body: formData,
+      body: { url: cloudJson.secure_url }
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || "Falha no upload");
-    }
     toast("Foto atualizada!");
     router();
-  } catch (e) { toast(e.message);}
+  } catch (e) { toast(e.message); }
 }
 
 
@@ -400,10 +408,10 @@ async function trash() {
       <article class="card">
         ${m.tipo === "VIDEO"
       ? `<div onclick="abrirLightbox('/api/v1${m.url}', 'VIDEO')" style="cursor:pointer">
-       <video src="/api/v1${m.url}" style="width:100%;height:145px;object-fit:cover"></video>
+       <video src="${m.url}" style="width:100%;height:145px;object-fit:cover"></video>
      </div>`
       : `<div class="cover" style="cursor:pointer" onclick="abrirLightbox('/api/v1${m.url}', 'FOTO')">
-       <img src="/api/v1${m.url}" alt="">
+       <img src="${m.url}" alt="">
      </div>`}
         <div class="card-body">
           <h3>${escapeHtml(m.nome)}</h3>
@@ -465,24 +473,31 @@ function openModal(kind, id, parentAlbumId) {
         const fileInput = form.querySelector('input[name="file"]');
         if (!fileInput.files.length) return toast("Selecione um arquivo");
 
-        const formData = new FormData();
-        formData.append("file", fileInput.files[0]);
+        const file = fileInput.files[0];
 
-        const token = storage.get("token", null);
-        const res = await fetch(`${CONFIG.apiBaseUrl}/categories/${parentAlbumId}/media`, {
+        // 1. Upload pro Cloudinary
+        const cloudData = new FormData();
+        cloudData.append("file", file);
+        cloudData.append("upload_preset", CONFIG.cloudinaryPreset);
+
+        const cloudRes = await fetch(
+            `https://api.cloudinary.com/v1_1/${CONFIG.cloudinaryCloudName}/auto/upload`,
+            { method: "POST", body: cloudData }
+        );
+
+        if (!cloudRes.ok) throw new Error("Falha no upload pro Cloudinary");
+
+        const cloudJson = await cloudRes.json();
+
+        // 2. Envia a URL pro backend
+        await api.request(`/categories/${parentAlbumId}/media`, {
           method: "POST",
-          headers: { ...(token && { Authorization: `Bearer ${token}` }) },
-          body: formData,
+          body: {
+            url: cloudJson.secure_url,
+            nome: file.name,
+            tipo: file.type.startsWith("video") ? "VIDEO" : "FOTO"
+          }
         });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.message || "Falha no upload");
-        }
-      } else if (isAlbum) {
-        await api.albums.create({ name: data.name, description: data.description });
-      } else {
-        await api.categories.create(parentAlbumId, { name: data.name });
       }
 
       closeModal();

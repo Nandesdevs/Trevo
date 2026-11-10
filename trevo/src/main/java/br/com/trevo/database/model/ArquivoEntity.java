@@ -22,7 +22,7 @@ public class ArquivoEntity {
         private String nome;
 
         @Column(nullable = false)
-        private String caminho;         // onde está: "uploads/videos/uuid.mp4"
+        private String url;
 
         //      lixeira abaixo
 
