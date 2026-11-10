@@ -213,7 +213,11 @@ async function home() {
   let albums = [];
   try {
     albums = await api.albums.list();
+    state.albums = albums;
+    save();
   } catch (e) { toast(e.message); }
+...
+}
 
   shell(`<section class="page">
     <div class="page-head">
@@ -475,7 +479,6 @@ function openModal(kind, id, parentAlbumId) {
 
         const file = fileInput.files[0];
 
-        // 1. Upload pro Cloudinary
         const cloudData = new FormData();
         cloudData.append("file", file);
         cloudData.append("upload_preset", CONFIG.cloudinaryPreset);
@@ -489,7 +492,6 @@ function openModal(kind, id, parentAlbumId) {
 
         const cloudJson = await cloudRes.json();
 
-        // 2. Envia a URL pro backend
         await api.request(`/categories/${parentAlbumId}/media`, {
           method: "POST",
           body: {
@@ -498,6 +500,10 @@ function openModal(kind, id, parentAlbumId) {
             tipo: file.type.startsWith("video") ? "VIDEO" : "FOTO"
           }
         });
+      } else if (isAlbum) {
+        await api.albums.create({ name: data.name, description: data.description });
+      } else {
+        await api.categories.create(parentAlbumId, { name: data.name });
       }
 
       closeModal();
