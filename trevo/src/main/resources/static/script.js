@@ -274,8 +274,8 @@ function abrirLightbox(url, tipo) {
     <div class="modal-backdrop" id="modal-backdrop" onclick="closeModal()" style="background:#000c">
       <div style="max-width:95vw;max-height:95vh;display:flex;align-items:center;justify-content:center;position:relative">
         ${tipo === "VIDEO"
-      ? `<video controls autoplay src="${url}" style="max-width:95vw;max-height:90vh;border-radius:8px"></video>`
-      : `<img src="${url}" style="max-width:95vw;max-height:90vh;border-radius:8px">`}
+      ? `<video controls autoplay src="${url}" style="max-width:95vw;max-height:90vh;border-radius:8px;background:#000"></video>`
+      : `<img src="${url}" style="max-width:95vw;max-height:90vh;border-radius:8px;background:#000;min-width:200px;min-height:200px;object-fit:contain">`}
         <button class="icon-btn" onclick="closeModal()" style="position:absolute;top:-40px;right:0;color:#fff;font-size:32px">×</button>
       </div>
     </div>
@@ -301,10 +301,10 @@ async function comments() {
           ${midias.length ? midias.map(m => `
             <article class="card">
               ${m.tipo === "VIDEO"
-      ? `<div onclick="abrirLightbox('/api/v1${m.url}', 'VIDEO')" style="cursor:pointer">
+      ? `<div onclick="abrirLightbox('${m.url}', 'VIDEO')" style="cursor:pointer">
        <video src="${m.url}" style="width:100%;height:145px;object-fit:cover"></video>
      </div>`
-      : `<div class="cover" style="cursor:pointer" onclick="abrirLightbox('/api/v1${m.url}', 'FOTO')">
+      : `<div class="cover" style="cursor:pointer" onclick="abrirLightbox('${m.url}', 'FOTO')">
        <img src="${m.url}" alt="">
      </div>`}
               <div class="card-body">
@@ -407,10 +407,10 @@ async function trash() {
     ${itens.length ? `<div class="grid">${itens.map(m => `
       <article class="card">
         ${m.tipo === "VIDEO"
-      ? `<div onclick="abrirLightbox('/api/v1${m.url}', 'VIDEO')" style="cursor:pointer">
+      ? `<div onclick="abrirLightbox('${m.url}', 'VIDEO')" style="cursor:pointer">
        <video src="${m.url}" style="width:100%;height:145px;object-fit:cover"></video>
      </div>`
-      : `<div class="cover" style="cursor:pointer" onclick="abrirLightbox('/api/v1${m.url}', 'FOTO')">
+      : `<div class="cover" style="cursor:pointer" onclick="abrirLightbox('${m.url}', 'FOTO')">
        <img src="${m.url}" alt="">
      </div>`}
         <div class="card-body">
